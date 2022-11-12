@@ -3,6 +3,7 @@ using Expressions.Task3.E3SQueryProvider.Models.Request;
 using Microsoft.AspNetCore.WebUtilities;
 using Newtonsoft.Json;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Expressions.Task3.E3SQueryProvider
@@ -31,20 +32,8 @@ namespace Expressions.Task3.E3SQueryProvider
         public Uri GenerateRequestUrl(Type type, string query = "*", int start = 0, int limit = 10)
         {
             string metaTypeName = GetMetaTypeName(type);
-
-            var ftsQueryRequest = new FtsQueryRequest
-            {
-                Statements = new List<Statement>
-                {
-                    new Statement {
-                        Query = query
-                    }
-                },
-                Start = start,
-                Limit = limit
-            };
-
-            var ftsQueryRequestString = JsonConvert.SerializeObject(ftsQueryRequest);
+            
+            var ftsQueryRequestString = GetConvertedFtsQueryRequest(query, start, limit);
 
             var uri = BindByName($"{_baseAddress}{_FTSSearchTemplate}",
                 new Dictionary<string, string>()
@@ -54,6 +43,47 @@ namespace Expressions.Task3.E3SQueryProvider
                 });
 
             return uri;
+        }
+
+        public string GetConvertedFtsQueryRequest(string query = "*", int start = 0, int limit = 10)
+        {
+            var statements = GetListOfStatements(query);
+
+            var ftsQueryRequest = new FtsQueryRequest
+            {
+                Statements = statements,
+                Start = start,
+                Limit = limit
+            };
+
+            var ftsQueryRequestString = JsonConvert.SerializeObject(ftsQueryRequest);
+
+            return ftsQueryRequestString;
+        }
+
+        private List<Statement> GetListOfStatements(string query)
+        {
+            var statements = new List<Statement>();
+            if (string.IsNullOrEmpty(query))
+            {
+                statements.Add(new Statement
+                {
+                    Query = query
+                });
+                return statements;
+            }
+
+            var queries = query.Split(";", StringSplitOptions.RemoveEmptyEntries);
+            foreach (var q in queries)
+            {
+                statements.Add(
+                    new Statement
+                    {
+                        Query = q
+                    });
+            }
+
+            return statements;
         }
 
         #endregion

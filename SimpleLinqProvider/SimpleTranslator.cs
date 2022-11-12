@@ -1,15 +1,13 @@
-﻿using System;
-using System.Linq;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Text;
 
-namespace Expressions.Task3.E3SQueryProvider
+namespace SimpleLinqProvider
 {
-    public class ExpressionToFtsRequestTranslator : ExpressionVisitor
+    public class SimpleTranslator: ExpressionVisitor
     {
         readonly StringBuilder _resultStringBuilder;
 
-        public ExpressionToFtsRequestTranslator()
+        public SimpleTranslator()
         {
             _resultStringBuilder = new StringBuilder();
         }
@@ -28,40 +26,20 @@ namespace Expressions.Task3.E3SQueryProvider
             if (node.Method.DeclaringType == typeof(Queryable)
                 && node.Method.Name == "Where")
             {
+                _resultStringBuilder.Append("WHERE ");
                 var predicate = node.Arguments[1];
                 Visit(predicate);
 
                 return node;
             }
-
-            if (node.Method.DeclaringType == typeof(String))
+            
+            if (node.Method.DeclaringType == typeof(Enumerable)
+                && node.Method.Name == "ToList")
             {
                 var predicate = node.Arguments[0];
-                Visit(node.Object);
-
-                switch (node.Method.Name)
-                {
-                    case "StartsWith":
-                        VisitConstantWithFraming(predicate, "(", "*)");
-                        break;
-
-                    case "Contains":
-                        VisitConstantWithFraming(predicate, "(*", "*)");
-                        break;
-
-                    case "EndsWith":
-                        VisitConstantWithFraming(predicate, "(*", ")");
-                        break;
-
-                    case "Equals":
-                        VisitConstantWithFraming(predicate, "(", ")");
-                        break;
-
-                    default:
-                        throw new NotSupportedException($"Method {node.Method.Name} not supported for translation!");
-                }
-
                 
+                _resultStringBuilder.Append("SELECT * FROM [dbo].[products] ");
+                Visit(predicate);
 
                 return node;
             }
@@ -82,13 +60,27 @@ namespace Expressions.Task3.E3SQueryProvider
             {
                 case ExpressionType.Equal:
 
-                    VisitMemberFirst(node);
+                    VisitMemberWithOperation(node, " = ");
 
                     break;
 
                 case ExpressionType.AndAlso:
                     Visit(node.Left);
-                    _resultStringBuilder.Append(";");
+                    _resultStringBuilder.Append(" AND ");
+                    Visit(node.Right);
+
+                    break;
+
+                case ExpressionType.GreaterThan:
+                    Visit(node.Left);
+                    _resultStringBuilder.Append(" > ");
+                    Visit(node.Right);
+
+                    break;
+
+                case ExpressionType.LessThan:
+                    Visit(node.Left);
+                    _resultStringBuilder.Append(" < ");
                     Visit(node.Right);
 
                     break;
@@ -100,7 +92,7 @@ namespace Expressions.Task3.E3SQueryProvider
             return node;
         }
 
-        protected void VisitMemberFirst(BinaryExpression node)
+        protected void VisitMemberWithOperation(BinaryExpression node, string operation)
         {
             var memberNode = node.Left is MemberExpression m ? m : node.Right as MemberExpression;
             if (memberNode == null)
@@ -115,21 +107,30 @@ namespace Expressions.Task3.E3SQueryProvider
             }
 
             Visit(memberNode);
-            VisitConstantWithFraming(constantNode, "(", ")");
+            _resultStringBuilder.Append(operation);
+            Visit(constantNode);
         }
-        
+
         protected override Expression VisitMember(MemberExpression node)
         {
-            _resultStringBuilder.Append(node.Member.Name).Append(":");
+            _resultStringBuilder.Append(node.Member.Name);
 
             return base.VisitMember(node);
         }
 
         protected override Expression VisitConstant(ConstantExpression node)
         {
-            _resultStringBuilder.Append(node.Value);
+            if (node.Value is string value)
+            {
+                _resultStringBuilder.Append("'");
+                _resultStringBuilder.Append(node.Value);
+                _resultStringBuilder.Append("'");
+            }
+            else
+            {
+                _resultStringBuilder.Append(node.Value);
+            }
             
-
             return node;
         }
 

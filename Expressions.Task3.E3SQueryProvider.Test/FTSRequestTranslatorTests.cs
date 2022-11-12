@@ -2,7 +2,9 @@
 using System.Linq;
 using System.Linq.Expressions;
 using Expressions.Task3.E3SQueryProvider.Models.Entities;
+using NUnit.Framework;
 using Xunit;
+using Assert = Xunit.Assert;
 
 namespace Expressions.Task3.E3SQueryProvider.Test
 {

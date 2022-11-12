@@ -8,9 +8,12 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using Expressions.Task3.E3SQueryProvider.Models.Entities;
+using Expressions.Task3.E3SQueryProvider.Models.Request;
+using Newtonsoft.Json;
 using Xunit;
 
 namespace Expressions.Task3.E3SQueryProvider.Test
@@ -25,6 +28,7 @@ namespace Expressions.Task3.E3SQueryProvider.Test
             var translator = new ExpressionToFtsRequestTranslator();
             Expression<Func<IQueryable<EmployeeEntity>, IQueryable<EmployeeEntity>>> expression
                 = query => query.Where(e => e.Workstation == "EPRUIZHW006" && e.Manager.StartsWith("John"));
+            
             /*
              * The expression above should be converted to the following FTSQueryRequest and then serialized inside FTSRequestGenerator:
              * "statements": [
@@ -34,8 +38,42 @@ namespace Expressions.Task3.E3SQueryProvider.Test
               ],
              */
 
+            var translatedExpression = translator.Translate(expression);
+            var ftsGenerator = new FtsRequestGenerator(string.Empty);
+
+            var actualResult = ftsGenerator.GetConvertedFtsQueryRequest(translatedExpression);
+            var expectedResult = GetTestConvertedFtsQueryRequest();
+
+            Assert.Equal(expectedResult, actualResult);
+
             // todo: create asserts for this test by yourself, because they will depend on your final implementation
-            throw new NotImplementedException("Please implement this test and the appropriate functionality");
+            //throw new NotImplementedException("Please implement this test and the appropriate functionality");
+        }
+
+        public string GetTestConvertedFtsQueryRequest(int start = 0, int limit = 10)
+        {
+            var statements = new List<Statement>(); 
+
+            statements.Add(new Statement()
+            {
+                Query = "Workstation:(EPRUIZHW006)"
+            });
+
+            statements.Add(new Statement()
+            {
+                Query = "Manager:(John*)"
+            });
+
+            var ftsQueryRequest = new FtsQueryRequest
+            {
+                Statements = statements,
+                Start = start,
+                Limit = limit
+            };
+
+            var ftsQueryRequestString = JsonConvert.SerializeObject(ftsQueryRequest);
+
+            return ftsQueryRequestString;
         }
 
         #endregion

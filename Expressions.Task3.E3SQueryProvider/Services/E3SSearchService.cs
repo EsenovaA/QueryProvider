@@ -45,10 +45,10 @@ namespace Expressions.Task3.E3SQueryProvider.Services
                 throw new ArgumentNullException(nameof(finalType));
             }
             var items = finalType.GetProperty("items");
-            if (items == null)
-            {
-                throw new ArgumentNullException(nameof(items));
-            }
+            //if (items == null)
+            //{
+            //    throw new ArgumentNullException(nameof(items));
+            //}
 
             var requestGenerator = new FtsRequestGenerator(_baseAddress);
             Uri request = requestGenerator.GenerateRequestUrl(type, query, start, limit);
